@@ -16,6 +16,15 @@ app.get('/api/health', (request, response) => {
     response.send({ status: 'ok' });
 });
 
+// Get all books
+app.get('/api/books', (request, response, next) => {
+    Book.find({})
+        .then(books => {
+            response.json(books)
+        })
+        .catch(error => next(error))
+})
+
 // GET single book by ID
 app.get('/api/books/:id', (request, response, next) => {
     Book.findById(request.params.id)
@@ -23,7 +32,7 @@ app.get('/api/books/:id', (request, response, next) => {
             if (book) {
                 response.json(book);
             } else {
-                response.status(404).end();
+                response.status(404).send({ error: 'book not found' });
             }
         })
         .catch(error => next(error));
@@ -57,7 +66,13 @@ app.put('/api/books/:id', (request, response, next) => {
         runValidators: true,
         context: 'query',
     })
-        .then(result => response.json(result))
+        .then(result => {
+            if (result) {
+                response.json(result)
+            } else {
+                response.status(404).json({ error: 'book not found'})
+            }
+        })
         .catch(error => next(error));
 });
 

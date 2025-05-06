@@ -77,10 +77,24 @@ app.put('/api/books/:id', (request, response, next) => {
 });
 
 // DELETE book
-app.delete('/api/book/:id', (request, response, next) => {
-    Book.findByIdAndDelete(request.params.id)
-        .then(() => response.status(204).end())
-        .catch(error => next(error));
+app.delete('/api/books/:id', (request, response, next) => {
+    const id = request.params.id;
+    console.log('Attempting to delete book with ID:', id);
+
+    Book.findByIdAndDelete(id)
+        .then(deletedBook => {
+            if (deletedBook) {
+                console.log('✅ Deleted:', deletedBook);
+                response.status(204).end();
+            } else {
+                console.log('❌ Book not found for ID:', id);
+                response.status(404).json({ error: 'book not found' });
+            }
+        })
+        .catch(error => {
+            console.error('❌ Error deleting:', error);
+            next(error);
+        });
 });
 
 // Start sever

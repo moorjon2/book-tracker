@@ -5,6 +5,8 @@ const cors = require('cors');
 // Import Book model to connect to DB
 const Book = require('./models/book')
 
+const errorHandler = require('./middleware/errorHandler')
+
 const app = express();
 
 // Middleware
@@ -96,6 +98,8 @@ app.delete('/api/books/:id', (request, response, next) => {
             next(error);
         });
 });
+
+app.use(errorHandler);
 
 // Start sever
 const PORT =  process.env.PORT || 3000;

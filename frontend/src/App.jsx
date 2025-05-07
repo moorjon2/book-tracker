@@ -1,49 +1,42 @@
-import { useEffect, useState } from "react";
-import bookService from "./services/bookService.js";
+import { useEffect, useState } from 'react';
+import bookService from './services/bookService';
+import BookForm from './components/BookForm';
 
 const App = () => {
     const [books, setBooks] = useState([]);
-    const [title, setTitle] = useState('');
-    const [author, setAuthor] = useState('');
-    const [year, setYear] = useState('');
-    const [pages, setPages] = useState('')
-    const [status, setStatus] = useState('')
+    const [editingBook, setEditingBook] = useState(null);
 
+    // Load books on first render
     useEffect(() => {
-        bookService
-            .getAll()
-            .then((data) => {
-                setBooks(data);
-            })
-            .catch((error) => {
-                console.error('Error fetching books:', error)
-            });
+        bookService.getAll().then((initialBooks) => {
+            setBooks(initialBooks);
+        });
     }, []);
 
-    const handleSubmit = (event) => {
-        event.preventDefault();
-
-        const newBook = {
-            title,
-            author,
-            year: Number(year),
-            pages: Number(pages),
-            status,
-        };
-
+    const handleCreate = (newBook) => {
         bookService
             .create(newBook)
             .then((createdBook) => {
                 setBooks(books.concat(createdBook));
-                // Reset form fields
-                setTitle('');
-                setAuthor('');
-                setYear('');
-                setPages('');
-                setStatus('');
             })
             .catch((error) => {
                 console.error('Error creating book:', error);
+            });
+    };
+
+    const handleUpdate = (updatedBookData) => {
+        bookService
+            .update(editingBook.id, updatedBookData)
+            .then((updatedBook) => {
+                setBooks(
+                    books.map((b) =>
+                        b.id === updatedBook.id ? updatedBook : b
+                    )
+                );
+                setEditingBook(null); // Exit editing mode
+            })
+            .catch((error) => {
+                console.error('Error updating book:', error);
             });
     };
 
@@ -52,56 +45,35 @@ const App = () => {
             bookService
                 .remove(id)
                 .then(() => {
-                    setBooks(books.filter((book) => book.id !== id));
+                    setBooks(books.filter((b) => b.id !== id));
                 })
                 .catch((error) => {
-                    console.error('Failed to delete book: ', error)
-                })
+                    console.error('Error deleting book:', error);
+                });
         }
-    }
+    };
 
     return (
         <div>
             <h1>Book Tracker</h1>
 
-            <h2>Add a New Book</h2>
-            <form onSubmit={handleSubmit}>
-                <div>
-                    Title: <input value={title} onChange={(e) => setTitle(e.target.value)} />
-                </div>
-                <div>
-                    Author: <input value={author} onChange={(e) => setAuthor(e.target.value)} />
-                </div>
-                <div>
-                    Year: <input type="number" value={year} onChange={(e) => setYear(e.target.value)} />
-                </div>
-                <div>
-                    Pages: <input type="number" value={pages} onChange={(e) => setPages(e.target.value)} />
-                </div>
-                <div>
-                    Status:
-                    <select value={status} onChange={(e) => setStatus(e.target.value)}>
-                        <option value="">Select</option>
-                        <option value="unread">Unread</option>
-                        <option value="reading">Reading</option>
-                        <option value="completed">Completed</option>
-                    </select>
-                </div>
-                <button type="submit">Add Book</button>
-            </form>
+            {/* Reuse the form for both create and edit */}
+            <BookForm
+                onSubmit={editingBook ? handleUpdate : handleCreate}
+                existingBook={editingBook}
+            />
 
-            {books.length === 0 ? (
-                <p>No books found.</p>
-            ) : (
-                <ul>
-                    {books.map((book) => (
-                        <li key={book.id}>
-                            <strong>{book.title}</strong> by {book.author} - <em>{book.status}</em>
-                            <button onClick={() => handleDelete(book.id)}>Delete</button>
-                        </li>
-                    ))}
-                </ul>
-            )}
+            <h2>Books</h2>
+            <ul>
+                {books.map((book) => (
+                    <li key={book.id}>
+                        <strong>{book.title}</strong> by {book.author}{' '}
+                        {book.status && `(${book.status})`}
+                        <button onClick={() => setEditingBook(book)}>Edit</button>
+                        <button onClick={() => handleDelete(book.id)}>Delete</button>
+                    </li>
+                ))}
+            </ul>
         </div>
     );
 };

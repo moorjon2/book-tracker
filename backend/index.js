@@ -1,19 +1,37 @@
 require('dotenv').config();
 const express = require('express');
+const mongoose = require('mongoose');
 const cors = require('cors');
+const path = require('path');
 
-// Import Book model to connect to DB
-const Book = require('./models/book')
-
-const errorHandler = require('./middleware/errorHandler')
+const Book = require('./models/book');
+const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
 
-// Middleware
+// --- MongoDB connection ---
+mongoose.set('strictQuery', false);
+const mongoUrl = process.env.MONGODB_URI;
+
+console.log('Connecting to MongoDB...');
+mongoose.connect(mongoUrl)
+    .then(() => {
+        console.log('✅ Connected to MongoDB');
+    })
+    .catch((error) => {
+        console.error('❌ MongoDB connection error:', error.message);
+    });
+
+// --- Middleware ---
 app.use(cors());
 app.use(express.json());
 
-// Health check route
+// --- Serve frontend ---
+app.use(express.static('dist'));
+
+// --- API Routes ---
+
+// Health check
 app.get('/api/health', (request, response) => {
     response.send({ status: 'ok' });
 });
@@ -21,13 +39,11 @@ app.get('/api/health', (request, response) => {
 // Get all books
 app.get('/api/books', (request, response, next) => {
     Book.find({})
-        .then(books => {
-            response.json(books)
-        })
-        .catch(error => next(error))
-})
+        .then(books => response.json(books))
+        .catch(error => next(error));
+});
 
-// GET single book by ID
+// Get single book
 app.get('/api/books/:id', (request, response, next) => {
     Book.findById(request.params.id)
         .then(book => {
@@ -40,27 +56,20 @@ app.get('/api/books/:id', (request, response, next) => {
         .catch(error => next(error));
 });
 
-// POST new book
+// Create a new book
 app.post('/api/books', (request, response, next) => {
     const { title, author, year, pages, status } = request.body;
 
-    const book = new Book({
-        title,
-        author,
-        year,
-        pages,
-        status,
-    });
+    const book = new Book({ title, author, year, pages, status });
 
     book.save()
         .then(savedBook => response.status(201).json(savedBook))
-        .catch(error => (error));
+        .catch(error => next(error)); // ⬅️ fixed this too
 });
 
-// PUT update book
+// Update a book
 app.put('/api/books/:id', (request, response, next) => {
     const { title, author, year, pages, status } = request.body;
-
     const updatedBook = { title, author, year, pages, status };
 
     Book.findByIdAndUpdate(request.params.id, updatedBook, {
@@ -70,39 +79,32 @@ app.put('/api/books/:id', (request, response, next) => {
     })
         .then(result => {
             if (result) {
-                response.json(result)
+                response.json(result);
             } else {
-                response.status(404).json({ error: 'book not found'})
+                response.status(404).json({ error: 'book not found' });
             }
         })
         .catch(error => next(error));
 });
 
-// DELETE book
+// Delete a book
 app.delete('/api/books/:id', (request, response, next) => {
-    const id = request.params.id;
-    console.log('Attempting to delete book with ID:', id);
-
-    Book.findByIdAndDelete(id)
+    Book.findByIdAndDelete(request.params.id)
         .then(deletedBook => {
             if (deletedBook) {
-                console.log('✅ Deleted:', deletedBook);
                 response.status(204).end();
             } else {
-                console.log('❌ Book not found for ID:', id);
                 response.status(404).json({ error: 'book not found' });
             }
         })
-        .catch(error => {
-            console.error('❌ Error deleting:', error);
-            next(error);
-        });
+        .catch(error => next(error));
 });
 
+// Error handler
 app.use(errorHandler);
 
-// Start sever
-const PORT =  process.env.PORT || 3000;
+// Start server
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`Book Tracker API running on port ${PORT}`);
+    console.log(`📚 Book Tracker API running on port ${PORT}`);
 });

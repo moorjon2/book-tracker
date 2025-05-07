@@ -47,6 +47,19 @@ const App = () => {
             });
     };
 
+    const handleDelete = (id) => {
+        if (window.confirm('Are you sure you want to delete this book?')) {
+            bookService
+                .remove(id)
+                .then(() => {
+                    setBooks(books.filter((book) => book.id !== id));
+                })
+                .catch((error) => {
+                    console.error('Failed to delete book: ', error)
+                })
+        }
+    }
+
     return (
         <div>
             <h1>Book Tracker</h1>
@@ -84,6 +97,7 @@ const App = () => {
                     {books.map((book) => (
                         <li key={book.id}>
                             <strong>{book.title}</strong> by {book.author} - <em>{book.status}</em>
+                            <button onClick={() => handleDelete(book.id)}>Delete</button>
                         </li>
                     ))}
                 </ul>
